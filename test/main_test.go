@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"go-secret/pkg/crypto" // Import for Encrypt function
-	"go-secret/pkg/file"   // Import pkg/file package to access SecretFile struct and constants
+	"github.com/Yikai-Liao/sectore/pkg/crypto" // Import for Encrypt function
+	"github.com/Yikai-Liao/sectore/pkg/file"   // Import pkg/file package to access SecretFile struct and constants
 )
 
 // runCLI helper function to compile and execute go-secret CLI commands

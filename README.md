@@ -2,9 +2,9 @@
 
 A powerful CLI tool for securely managing encrypted key-value pairs with enterprise-grade AES-256-GCM encryption and integrity verification.
 
-[![CI](https://github.com/your-username/go-secret/workflows/CI/badge.svg)](https://github.com/your-username/go-secret/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/your-username/go-secret)](https://goreportcard.com/report/github.com/your-username/go-secret)
-[![codecov](https://codecov.io/gh/your-username/go-secret/branch/main/graph/badge.svg)](https://codecov.io/gh/your-username/go-secret)
+[![CI](https://github.com/Yikai-Liao/sectore/workflows/CI/badge.svg)](https://github.com/Yikai-Liao/sectore/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Yikai-Liao/sectore)](https://goreportcard.com/report/github.com/Yikai-Liao/sectore)
+[![codecov](https://codecov.io/gh/Yikai-Liao/sectore/branch/main/graph/badge.svg)](https://codecov.io/gh/Yikai-Liao/sectore)
 
 ## Features
 
@@ -21,8 +21,8 @@ A powerful CLI tool for securely managing encrypted key-value pairs with enterpr
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/go-secret.git
-cd go-secret
+git clone https://github.com/Yikai-Liao/sectore.git
+cd sectore
 
 # Build the binary
 go build -o bin/sectore cmd/sectore/main.go
@@ -35,15 +35,15 @@ go install ./cmd/sectore
 
 ```bash
 # Install directly from source
-go install github.com/your-username/go-secret/cmd/sectore@latest
+go install github.com/Yikai-Liao/sectore/cmd/sectore@latest
 
 # Or install specific version
-go install github.com/your-username/go-secret/cmd/sectore@v1.0.0
+go install github.com/Yikai-Liao/sectore/cmd/sectore@v1.0.0
 ```
 
 ### Download Pre-built Binaries
 
-Pre-built binaries are available for Linux, macOS, and Windows on the [Releases](https://github.com/your-username/go-secret/releases) page.
+Pre-built binaries are available for Linux, macOS, and Windows on the [Releases](https://github.com/Yikai-Liao/sectore/releases) page.
 
 ## Usage
 
@@ -86,7 +86,7 @@ sectore export encrypted.json -p password -o config.env
 ## Project Structure
 
 ```
-go-secret/
+sectore/
 ├── .github/workflows/    # GitHub Actions CI/CD
 ├── cmd/sectore/          # CLI application entry point
 ├── pkg/

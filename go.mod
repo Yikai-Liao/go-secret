@@ -1,4 +1,4 @@
-module go-secret
+module github.com/Yikai-Liao/sectore
 
 go 1.24.3
 
