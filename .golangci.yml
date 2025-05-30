@@ -16,7 +16,7 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - gomnd
+    - mnd
     - goprintffuncname
     - gosec
     - gosimple
@@ -42,16 +42,10 @@ linters-settings:
     check-blank: true
   
   govet:
-    check-shadowing: true
-  
-  golint:
-    min-confidence: 0
+    shadow: true
   
   gocyclo:
     min-complexity: 15
-  
-  maligned:
-    suggest-new: true
   
   dupl:
     threshold: 100
@@ -63,16 +57,20 @@ linters-settings:
   lll:
     line-length: 140
   
-  gomnd:
-    settings:
-      mnd:
-        checks: argument,case,condition,operation,return,assign
+  mnd:
+    checks: 
+      - argument
+      - case
+      - condition
+      - operation
+      - return
+      - assign
 
 issues:
   exclude-rules:
     - path: _test\.go
       linters:
-        - gomnd
+        - mnd
         - funlen
         - gocyclo
     - path: cmd/
