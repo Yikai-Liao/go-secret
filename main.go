@@ -19,17 +19,17 @@ import (
 var (
 	secretFilePath string
 	password       string
-	forceOverwrite bool // 新增：强制覆盖标志
-	passwordBytes  []byte // 新增：用于安全处理密码
+	forceOverwrite bool // New: force overwrite flag
+	passwordBytes  []byte // New: for secure password handling
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "go-secret",
-	Short: "go-secret 是一个用于管理加密键值对的CLI工具",
-	Long: `go-secret 是一个强大的CLI工具，用于安全地存储、检索和管理加密的键值对。
-它支持多种操作，如设置、取消设置、导出、初始化、导入和编辑秘密。`,
+	Use:   "gs",
+	Short: "gs is a CLI tool for managing encrypted key-value pairs", 
+	Long: `gs is a powerful CLI tool for securely storing, retrieving, and managing encrypted key-value pairs.
+It supports various operations such as setting, unsetting, exporting, initializing, importing, and editing secrets.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-	// 默认行为：显示帮助信息
+	// Default behavior: show help
 	cmd.Help()
 	return nil
 },
@@ -37,15 +37,15 @@ var rootCmd = &cobra.Command{
 
 var setCmd = &cobra.Command{
 	Use:   "set [file]",
-	Short: "从加密文件设置环境变量",
-	Long:  `set 命令用于读取一个加密的JSON文件，解密其内容，并将其键值对设置为当前会话的环境变量。`,
-	Args:  cobra.ExactArgs(1), // 只需要一个文件路径参数
+	Short: "Set environment variables from encrypted file",
+	Long:  `The set command reads an encrypted JSON file, decrypts its contents, and sets its key-value pairs as environment variables for the current session.`,
+	Args:  cobra.ExactArgs(1), // Only need one file path argument
  	RunE: func(cmd *cobra.Command, args []string) error {
-		filePath := args[0] // 获取文件路径
+		filePath := args[0] // Get file path
 
-		sf, err := file.ReadSecretFile(filePath) // 读取指定文件
+		sf, err := file.ReadSecretFile(filePath) // Read specified file
 		if err != nil {
-			return fmt.Errorf("无法读取秘密文件 '%s': %w", filePath, err)
+			return fmt.Errorf("failed to read secret file '%s': %w", filePath, err)
 		}
 
 		// Decrypt secrets first for hash verification
@@ -65,7 +65,7 @@ var setCmd = &cobra.Command{
 			if err != nil {
 				// If any key fails to decrypt with the given password, the hash check will likely fail
 				// or the user has the wrong password.
-				fmt.Fprintf(os.Stderr, "警告: 无法解密键 '%s' (可能是密码错误或数据损坏): %v\n", k, err)
+				fmt.Fprintf(os.Stderr, "Warning: Cannot decrypt key '%s' (possible password error or data corruption): %v\n", k, err)
 				anyDecryptionFailed = true
 				// We can't put this decrypted value in the map, so skip it.
 				// The hash verification will be based on successfully decrypted secrets.
@@ -87,9 +87,9 @@ var setCmd = &cobra.Command{
 		if !file.VerifySecretsHash(decryptedSecrets, sf.Hash) {
 			// If any decryption failed, this message might be more accurate
 			if anyDecryptionFailed {
-				return fmt.Errorf("秘密文件哈希校验失败，且一个或多个秘密解密失败 (可能是密码错误或文件被篡改)。")
+				return fmt.Errorf("Secret file hash verification failed, and one or more secrets decryption failed (possible password error or file tampering).")
 			}
-			return fmt.Errorf("秘密文件哈希校验失败，文件可能已被篡改。")
+			return fmt.Errorf("Secret file hash verification failed, file may have been tampered with.")
 		}
 		
 		// If all decryptions failed due to wrong password, and original secrets map was empty, hash could still pass.
@@ -99,38 +99,38 @@ var setCmd = &cobra.Command{
 		// CalculateSecretsHash(empty) would NOT match sf.Hash (which was based on non-empty original data).
 		// So the hash check *should* catch wrong password if there was data.
 
-		fmt.Printf("正在从 '%s' 设置环境变量...\n", filePath)
+		fmt.Printf("Setting environment variables from '%s'...\n", filePath)
 		// Iterate over successfully decrypted secrets to set them
 		for k, decryptedValue := range decryptedSecrets {
 			// We already handled decryption errors above.
 			// If a key is in decryptedSecrets, it means it was successfully decrypted.
 			os.Setenv(k, decryptedValue)
-			fmt.Printf("已设置环境变量: %s\n", k)
+			fmt.Printf("Environment variable set: %s\n", k)
 		}
 		if len(decryptedSecrets) == 0 && len(sf.Secrets) > 0 && !anyDecryptionFailed {
 			// This case implies sf.Secrets had entries but none were added to decryptedSecrets,
 			// which shouldn't happen if anyDecryptionFailed is false.
 			// This might indicate an issue if sf.Secrets only contained __hash__.
 		} else if anyDecryptionFailed && len(decryptedSecrets) == 0 && len(sf.Secrets) > 0 {
-		           fmt.Fprintln(os.Stderr, "警告: 由于所有秘密解密失败，未设置任何环境变量。请检查密码。")
+		           fmt.Fprintln(os.Stderr, "Warning: No environment variables set due to all secrets decryption failures. Please check password.")
 		      }
 
-		fmt.Println("环境变量设置完成。这些变量仅在当前会话中有效。")
+		fmt.Println("Environment variables setup completed. These variables are only valid for the current session.")
 		return nil
 	},
 }
 
 var unsetCmd = &cobra.Command{
 	Use:   "unset [file]",
-	Short: "从加密文件取消设置环境变量",
-	Long:  `unset 命令用于读取一个加密的JSON文件，解密其内容，并提供取消设置相应环境变量的shell命令。`,
-	Args:  cobra.ExactArgs(1), // 只需要一个文件路径参数
+	Short: "Unset environment variables from encrypted file",
+	Long:  `The unset command reads an encrypted JSON file, decrypts its contents, and provides shell commands to unset the corresponding environment variables.`,
+	Args:  cobra.ExactArgs(1), // Only need one file path argument
  	RunE: func(cmd *cobra.Command, args []string) error {
-		filePath := args[0] // 获取文件路径
+		filePath := args[0] // Get file path
 
-		sf, err := file.ReadSecretFile(filePath) // 读取指定文件
+		sf, err := file.ReadSecretFile(filePath) // Read specified file
 		if err != nil {
-			return fmt.Errorf("无法读取秘密文件 '%s': %w", filePath, err)
+			return fmt.Errorf("failed to read secret file '%s': %w", filePath, err)
 		}
 
 		// Decrypt secrets first for hash verification
@@ -151,7 +151,7 @@ var unsetCmd = &cobra.Command{
 			}()
 			decryptedValue, err := crypto.Decrypt(encryptedValue, passwordBytes)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "警告: 无法解密键 '%s' (可能是密码错误或数据损坏)，将仍会尝试生成unset命令: %v\n", k, err)
+				fmt.Fprintf(os.Stderr, "Warning: Cannot decrypt key '%s' (possible password error or data corruption), will still attempt to generate unset command: %v\n", k, err)
 				anyDecryptionFailed = true
 				// For unset, we still want to list the key even if decryption fails.
 				// We don't add it to decryptedSecrets for hash verification if decryption fails.
@@ -163,13 +163,13 @@ var unsetCmd = &cobra.Command{
 		// Verify hash against the (successfully) decrypted secrets
 		if !file.VerifySecretsHash(decryptedSecrets, sf.Hash) {
 			if anyDecryptionFailed {
-				return fmt.Errorf("秘密文件哈希校验失败，且一个或多个秘密解密失败 (可能是密码错误或文件被篡改)。")
+				return fmt.Errorf("Secret file hash verification failed, and one or more secrets decryption failed (possible password error or file tampering).")
 			}
-			return fmt.Errorf("秘密文件哈希校验失败，文件可能已被篡改。")
+			return fmt.Errorf("Secret file hash verification failed, file may have been tampered with.")
 		}
 
-		fmt.Printf("以下是取消设置从 '%s' 读取的环境变量的命令：\n", filePath)
-		fmt.Println("# 请在您的shell中执行以下命令以取消设置环境变量：")
+		fmt.Printf("Here are the commands to unset environment variables read from '%s':\n", filePath)
+		fmt.Println("# Please execute the following commands in your shell to unset environment variables:")
 		
 		keysToList := make([]string, 0, len(sf.Secrets))
 		for k := range sf.Secrets { // Iterate original keys from file
@@ -185,36 +185,36 @@ var unsetCmd = &cobra.Command{
 		}
 		
 		if !hasSecretsToProcess { // Check if there were any actual secrets (not just hash)
-		          fmt.Println("(无秘密可取消设置)")
+		          fmt.Println("(No secrets to unset)")
 		      }
 
-		fmt.Println("请注意：这些命令需要在当前shell会话中手动执行才能生效。")
+		fmt.Println("Please note: These commands need to be manually executed in the current shell session to take effect.")
 		return nil
 	},
 }
 
 var exportCmd = &cobra.Command{
 	Use:   "export [input_file]",
-	Short: "导出加密的秘密到指定文件",
-	Long: `export 命令用于读取一个加密的JSON文件，解密其内容，并将其键值对导出到指定的输出文件。
-支持导出为JSON格式（移除__hash__字段）或.env格式。`,
-	Args: cobra.ExactArgs(1), // 只需要一个输入文件路径参数
+	Short: "Export encrypted secrets to specified file",
+	Long: `The export command reads an encrypted JSON file, decrypts its contents, and exports its key-value pairs to a specified output file.
+Supports export to JSON format (removes __hash__ field) or .env format.`,
+	Args: cobra.ExactArgs(1), // Only need one input file path argument
  	RunE: func(cmd *cobra.Command, args []string) error {
 		inputFilePath := args[0]
 		outputFilePath, _ := cmd.Flags().GetString("output")
 
 		if outputFilePath == "" {
-			return fmt.Errorf("必须指定输出文件路径 (-o 或 --output)。")
+			return fmt.Errorf("Output file path must be specified (-o or --output).")
 		}
 
 		sf, err := file.ReadSecretFile(inputFilePath)
 		if err != nil {
-			return fmt.Errorf("无法读取输入秘密文件 '%s': %w", inputFilePath, err)
+			return fmt.Errorf("Cannot read input secret file '%s': %w", inputFilePath, err)
 		}
 
 		decryptedSecrets := make(map[string]string)
 		for k, encryptedValue := range sf.Secrets {
-			if k == file.HashField { // 跳过__hash__字段，因为它在解密前就存在
+			if k == file.HashField { // Skip __hash__ field as it exists before decryption
 				continue
 			}
 			passwordBytes := []byte(password)
@@ -225,19 +225,19 @@ var exportCmd = &cobra.Command{
 			}()
 			decryptedValue, err := crypto.Decrypt(encryptedValue, passwordBytes)
 			if err != nil {
-				return fmt.Errorf("无法解密键 '%s': %w", k, err) // 解密失败是致命错误，停止导出
+				return fmt.Errorf("Cannot decrypt key '%s': %w", k, err) // Decryption failure is fatal error, stop export
 			}
 			decryptedSecrets[k] = decryptedValue
 		}
 
-		// 验证解密后的数据与原始哈希是否匹配
+		// Verify if decrypted data matches original hash
 		if !file.VerifySecretsHash(decryptedSecrets, sf.Hash) {
-			return fmt.Errorf("秘密文件哈希校验失败，文件可能已被篡改或密码不正确。")
+			return fmt.Errorf("Secret file hash verification failed, file may have been tampered with or password is incorrect.")
 		}
 
-		// 根据输出文件后缀决定导出格式
+		// Determine export format based on output file extension
 		if strings.HasSuffix(outputFilePath, ".json") {
-			// 导出为JSON
+			// Export as JSON
 			outputSF := &file.SecretFile{Secrets: decryptedSecrets}
 			// 注意：WriteSecretFile会自动处理__hash__字段的写入，但这里我们希望导出的是纯净的解密JSON，
 			// 所以我们直接使用decryptedSecrets，并且不设置Hash字段，让MarshalJSON只导出Secrets。
@@ -245,28 +245,28 @@ var exportCmd = &cobra.Command{
 			outputSF.Hash = "" // 确保不写入__hash__字段
 
 			if err := file.WriteSecretFile(outputFilePath, outputSF); err != nil {
-				return fmt.Errorf("写入输出JSON文件失败 '%s': %w", outputFilePath, err)
+				return fmt.Errorf("Failed to write output JSON file '%s': %w", outputFilePath, err)
 			}
-			fmt.Printf("秘密已成功导出到JSON文件 '%s'。\n", outputFilePath)
+			fmt.Printf("Secrets successfully exported to JSON file '%s'.\n", outputFilePath)
 		} else if strings.HasSuffix(outputFilePath, ".env") {
-			// 导出为.env
+			// Export as .env
 			var envContent strings.Builder
 			var keys []string
 			for k := range decryptedSecrets {
 				keys = append(keys, k)
 			}
-			sort.Strings(keys) // 确保顺序一致性
+			sort.Strings(keys) // Ensure consistent order
 
 			for _, k := range keys {
 				envContent.WriteString(fmt.Sprintf("%s=%s\n", k, decryptedSecrets[k]))
 			}
 
 			if err := os.WriteFile(outputFilePath, []byte(envContent.String()), 0644); err != nil {
-				return fmt.Errorf("写入输出.env文件失败 '%s': %w", outputFilePath, err)
+				return fmt.Errorf("Failed to write output .env file '%s': %w", outputFilePath, err)
 			}
-			fmt.Printf("秘密已成功导出到.env文件 '%s'。\n", outputFilePath)
+			fmt.Printf("Secrets successfully exported to .env file '%s'.\n", outputFilePath)
 		} else {
-			return fmt.Errorf("不支持的输出文件格式。输出文件必须以 '.json' 或 '.env' 结尾。")
+			return fmt.Errorf("Unsupported output file format. Output file must end with '.json' or '.env'.")
 		}
 		return nil
 	},
@@ -274,11 +274,11 @@ var exportCmd = &cobra.Command{
 
 var initCmd = &cobra.Command{
 	Use:   "init [file]",
-	Short: "初始化秘密存储",
-	Long: `init 命令用于初始化一个新的秘密存储文件。
-如果未指定文件，则默认为 'go-secret.json' 并生成随机密码。
-如果指定文件，则必须通过 -p 或 --password 标志提供密码。`,
-	Args: cobra.MaximumNArgs(1), // 最多一个文件路径参数
+	Short: "Initialize secret storage",
+	Long: `The init command initializes a new secret storage file.
+If no file is specified, defaults to 'go-secret.json' and generates a random password.
+If a file is specified, a password must be provided via -p or --password flag.`,
+	Args: cobra.MaximumNArgs(1), // At most one file path argument
  	RunE: func(cmd *cobra.Command, args []string) error {
 		targetFilePath := "go-secret.json" // 默认文件路径
 		if len(args) > 0 {
@@ -290,17 +290,17 @@ var initCmd = &cobra.Command{
 		if err == nil {
 			// 文件已存在
 			if !forceOverwrite {
-				fmt.Printf("秘密文件 '%s' 已存在。是否覆盖？(y/N): ", targetFilePath)
+				fmt.Printf("Secret file '%s' already exists. Overwrite? (y/N): ", targetFilePath)
 				var response string
 				fmt.Scanln(&response)
 				if strings.ToLower(response) != "y" {
-					fmt.Println("初始化已取消。")
-					return nil // 用户选择不覆盖，不是错误
+					fmt.Println("Initialization cancelled.")
+					return nil // User chose not to overwrite, not an error
 				}
 			}
 		} else if !os.IsNotExist(err) {
 			// 其他文件检查错误
-			return fmt.Errorf("检查文件 '%s' 失败: %w", targetFilePath, err)
+			return fmt.Errorf("Failed to check file '%s': %w", targetFilePath, err)
 		}
 
 		var initPassword string
@@ -308,16 +308,16 @@ var initCmd = &cobra.Command{
 			// 无参数模式：生成随机密码
 			randomPassword, err := crypto.GenerateRandomPassword(32) // 生成32位随机密码
 			if err != nil {
-				return fmt.Errorf("生成随机密码失败: %w", err)
+				return fmt.Errorf("Failed to generate random password: %w", err)
 			}
 			initPassword = randomPassword
-			fmt.Println("已生成随机密码。请务必妥善保管此密码：")
-			fmt.Printf("密码: %s\n", initPassword)
-			fmt.Println("此密码用于加密和解密您的秘密文件。")
+			fmt.Println("Random password generated. Please keep this password safe:")
+			fmt.Printf("Password: %s\n", initPassword)
+			fmt.Println("This password is used to encrypt and decrypt your secret files.")
 		} else {
 			// 带参数模式：使用指定密码
 			if password == "" {
-				return fmt.Errorf("当指定文件时，必须通过 -p 或 --password 标志提供密码。")
+				return fmt.Errorf("When specifying a file, password must be provided via -p or --password flag.")
 			}
 			initPassword = password
 		}
@@ -334,7 +334,7 @@ var initCmd = &cobra.Command{
 			}()
 			encryptedValue, err := crypto.Encrypt(v, initPasswordBytes)
 			if err != nil {
-				return fmt.Errorf("加密空秘密失败: %w", err)
+				return fmt.Errorf("Failed to encrypt empty secrets: %w", err)
 			}
 			encryptedEmptySecrets[k] = encryptedValue
 		}
@@ -348,57 +348,57 @@ var initCmd = &cobra.Command{
 		}
 
 		if err := file.WriteSecretFile(targetFilePath, sf); err != nil {
-			return fmt.Errorf("创建秘密文件 '%s' 失败: %w", targetFilePath, err)
+			return fmt.Errorf("Failed to create secret file '%s': %w", targetFilePath, err)
 		}
 
-		fmt.Printf("秘密文件 '%s' 已成功初始化。\n", targetFilePath)
+		fmt.Printf("Secret file '%s' successfully initialized.\n", targetFilePath)
 		return nil
 	},
 }
 
 var importCmd = &cobra.Command{
 	Use:   "import [input_file]",
-	Short: "从非加密JSON文件导入秘密并加密",
-	Long: `import 命令用于读取一个非加密的JSON文件，校验其格式（不允许嵌套），
-	使用提供的密码加密所有值，计算哈希，并将加密后的数据写入新的秘密文件。`,
-	Args: cobra.ExactArgs(1), // 只需要一个输入文件路径参数
+	Short: "Import secrets from unencrypted JSON file and encrypt",
+	Long: `The import command reads an unencrypted JSON file, validates its format (no nesting allowed),
+	encrypts all values using the provided password, calculates hash, and writes the encrypted data to a new secret file.`,
+	Args: cobra.ExactArgs(1), // Only need one input file path argument
  	RunE: func(cmd *cobra.Command, args []string) error {
 		inputFilePath := args[0]
 		outputFilePath, _ := cmd.Flags().GetString("output")
 
 		if password == "" {
-			return fmt.Errorf("必须通过 -p 或 --password 标志提供密码。")
+			return fmt.Errorf("Password must be provided via -p or --password flag.")
 		}
 
 		if outputFilePath == "" {
-			return fmt.Errorf("必须指定输出文件路径 (-o 或 --output)。")
+			return fmt.Errorf("Output file path must be specified (-o or --output).")
 		}
 
 		// 1. 读取输入JSON文件
 		data, err := ioutil.ReadFile(inputFilePath)
 		if err != nil {
-			return fmt.Errorf("无法读取输入文件 '%s': %w", inputFilePath, err)
+			return fmt.Errorf("Cannot read input file '%s': %w", inputFilePath, err)
 		}
 
 		// 2. 严格校验输入JSON文件，确保其是单纯的键值对，没有嵌套。
 		// 但这里我们实际上是导入非加密的纯JSON，所以需要一个临时的map来接收
 		var rawSecrets map[string]interface{}
 		if err := json.Unmarshal(data, &rawSecrets); err != nil {
-			return fmt.Errorf("解析输入JSON文件 '%s' 失败: %w", inputFilePath, err)
+			return fmt.Errorf("Failed to parse input JSON file '%s': %w", inputFilePath, err)
 		}
 
 		plainSecrets := make(map[string]string)
 		for k, v := range rawSecrets {
 			// 检查是否有嵌套结构
 			if _, isMap := v.(map[string]interface{}); isMap {
-				return fmt.Errorf("输入JSON文件 '%s' 包含嵌套对象，不支持导入。", inputFilePath)
+				return fmt.Errorf("Input JSON file '%s' contains nested objects, import not supported.", inputFilePath)
 			}
 			if _, isArray := v.([]interface{}); isArray {
-				return fmt.Errorf("输入JSON文件 '%s' 包含嵌套数组，不支持导入。", inputFilePath)
+				return fmt.Errorf("Input JSON file '%s' contains nested arrays, import not supported.", inputFilePath)
 			}
 			strVal, ok := v.(string)
 			if !ok {
-				return fmt.Errorf("输入JSON文件 '%s' 中键 '%s' 的值不是字符串类型。", inputFilePath, k)
+				return fmt.Errorf("Value for key '%s' in input JSON file '%s' is not a string type.", k, inputFilePath)
 			}
 			plainSecrets[k] = strVal
 		}
@@ -414,7 +414,7 @@ var importCmd = &cobra.Command{
 			}()
 			encryptedValue, err := crypto.Encrypt(plaintextValue, passwordBytes)
 			if err != nil {
-				return fmt.Errorf("加密键 '%s' 的值失败: %w", k, err)
+				return fmt.Errorf("Failed to encrypt value for key '%s': %w", k, err)
 			}
 			encryptedSecrets[k] = encryptedValue
 		}
@@ -436,31 +436,31 @@ var importCmd = &cobra.Command{
 		}
 
 		if err := file.WriteSecretFile(outputFilePath, outputSF); err != nil {
-			return fmt.Errorf("写入输出秘密文件 '%s' 失败: %w", outputFilePath, err)
+			return fmt.Errorf("Failed to write output secret file '%s': %w", outputFilePath, err)
 		}
 
 		// 6. 成功导入后，向用户提供确认信息。
-		fmt.Printf("秘密已成功从非加密文件 '%s' 导入并加密到 '%s'。\n", inputFilePath, outputFilePath)
+		fmt.Printf("Secrets successfully imported from unencrypted file '%s' and encrypted to '%s'.\n", inputFilePath, outputFilePath)
 		return nil
 	},
 }
 
 var editCmd = &cobra.Command{
 	Use:   "edit [file]",
-	Short: "交互式编辑秘密文件",
-	Long: `edit 命令用于交互式地编辑加密的秘密文件。
-它会解密文件内容，允许用户添加、修改或删除键值对，并在保存时重新加密。`,
-	Args: cobra.ExactArgs(1), // 只需要一个文件路径参数
+	Short: "Interactively edit secret file",
+	Long: `The edit command interactively edits encrypted secret files.
+It decrypts file contents, allows users to add, modify, or delete key-value pairs, and re-encrypts when saving.`,
+	Args: cobra.ExactArgs(1), // Only need one file path argument
  	RunE: func(cmd *cobra.Command, args []string) error {
 		filePath := args[0] // 获取文件路径
 
 		if password == "" {
-			return fmt.Errorf("必须通过 -p 或 --password 标志提供密码。")
+			return fmt.Errorf("Password must be provided via -p or --password flag.")
 		}
 
 		sf, err := file.ReadSecretFile(filePath)
 		if err != nil {
-			return fmt.Errorf("无法读取秘密文件 '%s': %w", filePath, err)
+			return fmt.Errorf("Cannot read secret file '%s': %w", filePath, err)
 		}
 
 		// 解密所有秘密到内存中
@@ -477,24 +477,24 @@ var editCmd = &cobra.Command{
 			}()
 			decryptedValue, err := crypto.Decrypt(encryptedValue, passwordBytes)
 			if err != nil {
-				return fmt.Errorf("无法解密键 '%s'，请检查密码是否正确或文件是否损坏: %w", k, err) // 解密失败是致命错误，退出编辑
+				return fmt.Errorf("Cannot decrypt key '%s', please check if password is correct or file is corrupted: %w", k, err) // Decryption failure is fatal error, exit editing
 			}
 			decryptedSecrets[k] = decryptedValue
 		}
 
 		// 验证解密后的数据与原始哈希是否匹配
 		if !file.VerifySecretsHash(decryptedSecrets, sf.Hash) {
-			return fmt.Errorf("秘密文件哈希校验失败，文件可能已被篡改或密码不正确。")
+			return fmt.Errorf("Secret file hash verification failed, file may have been tampered with or password is incorrect.")
 		}
 
 		reader := bufio.NewReader(os.Stdin)
-		fmt.Println("进入交互式编辑模式。输入 'key: \"value\"' 更新/添加秘密，'key:' 或 'key: null' 删除秘密。")
-		fmt.Println("输入 '/save' 或 '/s' 保存并退出，输入 '/quit' 或 '/q' 退出不保存。")
+		fmt.Println("Entering interactive edit mode. Enter 'key: \"value\"' to update/add secrets, 'key:' or 'key: null' to delete secrets.")
+		fmt.Println("Enter '/save' or '/s' to save and exit, enter '/quit' or '/q' to exit without saving.")
 
 		for {
-			fmt.Println("\n--- 当前秘密 ---")
+			fmt.Println("\n--- Current Secrets ---")
 			if len(decryptedSecrets) == 0 {
-				fmt.Println("（无秘密）")
+				fmt.Println("(No secrets)")
 			} else {
 				var keys []string
 				for k := range decryptedSecrets {
@@ -508,13 +508,13 @@ var editCmd = &cobra.Command{
 			}
 			fmt.Println("-----------------")
 
-			fmt.Print("输入命令或键值对: ")
+			fmt.Print("Enter command or key-value pair: ")
 			input, _ := reader.ReadString('\n')
 			input = strings.TrimSpace(input)
 
 			switch strings.ToLower(input) {
 			case "/save", "/s":
-				fmt.Println("正在保存更改...")
+				fmt.Println("Saving changes...")
 				// 重新加密并保存
 				newEncryptedSecrets := make(map[string]string)
 				for k, decryptedValue := range decryptedSecrets {
@@ -526,7 +526,7 @@ var editCmd = &cobra.Command{
 					}()
 					encryptedValue, err := crypto.Encrypt(decryptedValue, passwordBytes)
 					if err != nil {
-						return fmt.Errorf("重新加密键 '%s' 失败: %w", k, err) // 加密失败是致命错误，退出
+						return fmt.Errorf("Failed to re-encrypt key '%s': %w", k, err) // Encryption failure is fatal error, exit
 					}
 					newEncryptedSecrets[k] = encryptedValue
 				}
@@ -535,18 +535,18 @@ var editCmd = &cobra.Command{
 				sf.Hash = file.CalculateSecretsHash(decryptedSecrets) // 哈希基于解密后的数据计算
 
 				if err := file.WriteSecretFile(filePath, sf); err != nil {
-					return fmt.Errorf("写入秘密文件 '%s' 失败: %w", filePath, err)
+					return fmt.Errorf("Failed to write secret file '%s': %w", filePath, err)
 				}
-				fmt.Printf("秘密文件 '%s' 已成功更新。\n", filePath)
+				fmt.Printf("Secret file '%s' successfully updated.\n", filePath)
 				return nil // 退出循环和命令
 			case "/quit", "/q":
-				fmt.Println("退出编辑模式，未保存更改。")
+				fmt.Println("Exiting edit mode, changes not saved.")
 				return nil // 退出循环和命令
 			default:
 				// 尝试解析键值对
 				parts := strings.SplitN(input, ":", 2)
 				if len(parts) != 2 {
-					fmt.Println("无效输入格式。请使用 'key: \"value\"' 或命令。")
+					fmt.Println("Invalid input format. Please use 'key: \"value\"' or commands.")
 					continue
 				}
 
@@ -554,7 +554,7 @@ var editCmd = &cobra.Command{
 				valueStr := strings.TrimSpace(parts[1])
 
 				if key == "" {
-					fmt.Println("键不能为空。")
+					fmt.Println("Key cannot be empty.")
 					continue
 				}
 
@@ -562,9 +562,9 @@ var editCmd = &cobra.Command{
 				if valueStr == "" || strings.ToLower(valueStr) == "null" {
 					if _, exists := decryptedSecrets[key]; exists {
 						delete(decryptedSecrets, key)
-						fmt.Printf("已删除键 '%s'。\n", key)
+						fmt.Printf("Key '%s' deleted.\n", key)
 					} else {
-						fmt.Printf("键 '%s' 不存在，无需删除。\n", key)
+						fmt.Printf("Key '%s' does not exist, no need to delete.\n", key)
 					}
 					continue
 				}
@@ -574,13 +574,13 @@ var editCmd = &cobra.Command{
 					// 移除引号并处理转义字符
 					unquotedValue, err := strconv.Unquote(valueStr)
 					if err != nil {
-						fmt.Fprintf(os.Stderr, "错误: 解析值 '%s' 失败，请确保字符串正确引用和转义: %v\n", valueStr, err)
+						fmt.Fprintf(os.Stderr, "Error: Failed to parse value '%s', please ensure string is properly quoted and escaped: %v\n", valueStr, err)
 						continue
 					}
 					decryptedSecrets[key] = unquotedValue
-					fmt.Printf("已更新/添加秘密: \033[1;34m%s\033[0m: \033[0;32m\"%s\"\033[0m\n", key, unquotedValue)
+					fmt.Printf("Secret updated/added: \033[1;34m%s\033[0m: \033[0;32m\"%s\"\033[0m\n", key, unquotedValue)
 				} else {
-					fmt.Println("值必须用双引号括起来，例如: 'key: \"value\"'。")
+					fmt.Println("Value must be enclosed in double quotes, e.g.: 'key: \"value\"'.")
 				}
 			}
 		}
@@ -588,21 +588,21 @@ var editCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&secretFilePath, "file", "f", "secrets.json", "默认秘密文件路径")
-	rootCmd.PersistentFlags().StringVarP(&password, "password", "p", "", "用于加密/解密的密码")
-	// 密码不再是所有命令的必需参数，只在需要时检查
+	rootCmd.PersistentFlags().StringVarP(&secretFilePath, "file", "f", "secrets.json", "Default secret file path")
+	rootCmd.PersistentFlags().StringVarP(&password, "password", "p", "", "Password for encryption/decryption")
+	// Password is no longer required for all commands, only checked when needed
 	// rootCmd.MarkPersistentFlagRequired("password")
 
-	// 为 initCmd 添加 force 标志
-	initCmd.Flags().BoolVarP(&forceOverwrite, "force", "F", false, "如果文件已存在，则强制覆盖")
+	// Add force flag for initCmd
+	initCmd.Flags().BoolVarP(&forceOverwrite, "force", "F", false, "Force overwrite if file already exists")
 
-	// 为 exportCmd 添加 output 标志
-	exportCmd.Flags().StringP("output", "o", "", "输出文件路径（.json 或 .env）")
-	exportCmd.MarkFlagRequired("output") // 输出文件路径是必需的
+	// Add output flag for exportCmd
+	exportCmd.Flags().StringP("output", "o", "", "Output file path (.json or .env)")
+	exportCmd.MarkFlagRequired("output") // Output file path is required
 
-	// 为 importCmd 添加 output 标志
-	importCmd.Flags().StringP("output", "o", "", "输出秘密文件路径")
-	importCmd.MarkFlagRequired("output") // 输出文件路径是必需的
+	// Add output flag for importCmd
+	importCmd.Flags().StringP("output", "o", "", "Output secret file path")
+	importCmd.MarkFlagRequired("output") // Output file path is required
 
 	rootCmd.AddCommand(setCmd)
 	rootCmd.AddCommand(unsetCmd)

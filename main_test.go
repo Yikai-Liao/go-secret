@@ -354,7 +354,7 @@ func TestSetCommand(t *testing.T) {
 		if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() == 0 {
 			t.Errorf("Expected non-zero exit code, actual: %v", err)
 		}
-		expectedErrorMsg := "JSON文件包含嵌套对象，不支持"
+		expectedErrorMsg := "nested objects are not supported"
 		if !strings.Contains(stderr, expectedErrorMsg) {
 			t.Errorf("Expected error message '%s' not found in stderr.\nStderr: %s", expectedErrorMsg, stderr)
 		}
@@ -1063,14 +1063,14 @@ func TestEditCommand(t *testing.T) {
 			t.Fatalf("edit command failed: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
 		}
 
-		// Check for key messages, allowing for interactive prompts in between
+		// Check for key messages, allowing for ANSI color codes
 		expectedOutputs := []string{
-			"进入交互式编辑模式。",
-			fmt.Sprintf("输入命令或键值对: 已更新/添加秘密: %s: \"%s\"", key3, value3),
-			fmt.Sprintf("输入命令或键值对: 已更新/添加秘密: %s: \"%s\"", key1, "modified_value_1"),
-			fmt.Sprintf("输入命令或键值对: 已删除键 '%s'。", key2),
-			"输入命令或键值对: 正在保存更改...",
-			fmt.Sprintf("秘密文件 '%s' 已成功更新。", secretFilePath),
+			"进入交互式编辑模式",
+			fmt.Sprintf("%s: \"%s\"", key3, value3),
+			"modified_value_1",
+			fmt.Sprintf("已删除键 '%s'", key2),
+			"正在保存更改",
+			"已成功更新",
 		}
 
 		for _, msg := range expectedOutputs {

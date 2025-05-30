@@ -237,7 +237,7 @@ func TestReadWriteSecretFile(t *testing.T) {
 	if err == nil {
 		t.Errorf("Write to read-only directory succeeded, expected failure.")
 	}
-	if !strings.Contains(err.Error(), "failed to write file") {
+	if !strings.Contains(err.Error(), "写入文件失败") {
 		t.Errorf("Read-only directory error message incorrect: %v", err)
 	}
 }
