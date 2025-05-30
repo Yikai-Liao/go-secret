@@ -2,6 +2,10 @@
 
 A powerful CLI tool for securely managing encrypted key-value pairs with enterprise-grade AES-256-GCM encryption and integrity verification.
 
+[![CI](https://github.com/your-username/go-secret/workflows/CI/badge.svg)](https://github.com/your-username/go-secret/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/your-username/go-secret)](https://goreportcard.com/report/github.com/your-username/go-secret)
+[![codecov](https://codecov.io/gh/your-username/go-secret/branch/main/graph/badge.svg)](https://codecov.io/gh/your-username/go-secret)
+
 ## Features
 
 - **Enterprise Security**: AES-256-GCM encryption with PBKDF2 key derivation (100k iterations)
@@ -9,6 +13,7 @@ A powerful CLI tool for securely managing encrypted key-value pairs with enterpr
 - **Flexible Operations**: Set, unset, export, import, and interactively edit secrets
 - **Multiple Formats**: Support for JSON and .env file exports
 - **Memory Safety**: Zero-out sensitive data after use
+- **Cross-Platform**: Works on Linux, macOS, and Windows
 
 ## Installation
 
@@ -16,7 +21,7 @@ A powerful CLI tool for securely managing encrypted key-value pairs with enterpr
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/your-username/go-secret.git
 cd go-secret
 
 # Build the binary
@@ -25,6 +30,20 @@ go build -o bin/sectore cmd/sectore/main.go
 # Or install globally
 go install ./cmd/sectore
 ```
+
+### Install from Source (without cloning)
+
+```bash
+# Install directly from source
+go install github.com/your-username/go-secret/cmd/sectore@latest
+
+# Or install specific version
+go install github.com/your-username/go-secret/cmd/sectore@v1.0.0
+```
+
+### Download Pre-built Binaries
+
+Pre-built binaries are available for Linux, macOS, and Windows on the [Releases](https://github.com/your-username/go-secret/releases) page.
 
 ## Usage
 
@@ -68,6 +87,7 @@ sectore export encrypted.json -p password -o config.env
 
 ```
 go-secret/
+├── .github/workflows/    # GitHub Actions CI/CD
 ├── cmd/sectore/          # CLI application entry point
 ├── pkg/
 │   ├── crypto/          # Encryption/decryption functionality
@@ -75,6 +95,7 @@ go-secret/
 ├── test/                # Integration tests
 ├── bin/                 # Built executables
 ├── go.mod               # Go module definition
+├── .golangci.yml        # Linting configuration
 └── README.md            # This file
 ```
 
@@ -114,15 +135,69 @@ go test ./pkg/file
 
 # Run with coverage
 go test -cover ./...
+
+# Run integration tests
+go test -v ./test/...
 ```
 
-### Code Coverage
+### Code Quality
 
 ```bash
+# Run linter
+golangci-lint run
+
 # Generate coverage report
 go test -coverprofile=coverage.out ./...
 go tool cover -html=coverage.out -o coverage.html
 ```
+
+### Local CI Testing
+
+This project uses [act](https://github.com/nektos/act) for local GitHub Actions testing:
+
+```bash
+# Install act (example for Linux ARM64)
+wget https://github.com/nektos/act/releases/download/v0.2.77/act_Linux_arm64.tar.gz
+tar -xzf act_Linux_arm64.tar.gz
+chmod +x act
+
+# Test workflows locally
+./act push -j test --dryrun    # Dry run tests
+./act push -j lint             # Run linting
+./act pull_request             # Test PR workflow
+```
+
+## CI/CD Pipeline
+
+This project uses GitHub Actions for continuous integration and deployment:
+
+### Workflows
+
+- **CI (`ci.yml`)**: Runs on every push and PR
+  - Multi-platform testing (Linux, macOS, Windows)
+  - Multiple Go versions (1.21, 1.22, 1.23)
+  - Code linting with golangci-lint
+  - Security scanning with Gosec
+  - Code coverage reporting to Codecov
+  - Cross-compilation for multiple architectures
+
+- **Release (`release.yml`)**: Runs on new releases
+  - Builds binaries for all supported platforms
+  - Creates release archives with checksums
+  - Automatically uploads assets to GitHub Releases
+
+- **Dependency Update (`dependency-update.yml`)**: Weekly automated dependency updates
+  - Updates Go modules to latest versions
+  - Creates PRs for dependency updates
+  - Runs tests to ensure compatibility
+
+### Status Checks
+
+All PRs must pass:
+- ✅ Tests on all platforms and Go versions
+- ✅ Linting and code quality checks
+- ✅ Security scanning
+- ✅ Code coverage requirements
 
 ## Security Notes
 
@@ -131,11 +206,22 @@ go tool cover -html=coverage.out -o coverage.html
 - Hash verification prevents tampering detection
 - Sensitive data is zeroed from memory after use
 - Never commit secret files to version control
-
-## License
-
-[Add your license here]
+- Regular security scanning in CI pipeline
 
 ## Contributing
 
-[Add contribution guidelines here]
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run tests and linting (`go test ./...` and `golangci-lint run`)
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a list of changes and version history.
