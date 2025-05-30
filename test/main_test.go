@@ -28,15 +28,19 @@ func runCLI(t *testing.T, args []string, stdinInput string, tempDir string) (str
 	}
 	defer os.Chdir(originalCwd) // Ensure switching back to original directory after test
 
-	// Compile sectore
-	// Use absolute path for compilation to avoid issues with os.Chdir
-	// Compile sectore from the original working directory
-	cmd := exec.Command("go", "build", "-o", filepath.Join(originalCwd, "sectore"), filepath.Join(originalCwd, "cmd", "sectore"))
-	// No need to set cmd.Dir here, as we are using absolute paths for both output and source
-	output, err := cmd.CombinedOutput()
+	// Compile sectore before changing directory
+	compileCmd := exec.Command("go", "build", "-o", filepath.Join(originalCwd, "sectore"), filepath.Join(originalCwd, "cmd", "sectore"))
+	compileCmd.Dir = originalCwd // Ensure compile command executes in project root directory
+	output, err := compileCmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to compile sectore: %v\n%s", err, output)
 	}
+
+	// Change directory for CLI command execution
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to switch to temp directory: %v", err)
+	}
+	defer os.Chdir(originalCwd) // Ensure switching back to original directory after test
 
 	// Build CLI command
 	cliCmd := exec.Command(filepath.Join(originalCwd, "sectore"), args...)
