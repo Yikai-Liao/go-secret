@@ -1,7 +1,7 @@
+version: "2"
 run:
   timeout: 5m
   modules-download-mode: readonly
-  config_version: 1
 
 linters:
   enable:
