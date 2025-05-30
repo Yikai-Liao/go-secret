@@ -2,6 +2,9 @@ run:
   timeout: 5m
   modules-download-mode: readonly
 
+linters-config:
+  config_version: 1
+
 linters:
   enable:
     - bodyclose

@@ -29,8 +29,9 @@ func runCLI(t *testing.T, args []string, stdinInput string, tempDir string) (str
 	defer os.Chdir(originalCwd) // Ensure switching back to original directory after test
 
 	// Compile sectore
-	cmd := exec.Command("go", "build", "-o", "sectore", "./cmd/sectore")
-	cmd.Dir = originalCwd // Compile command executes in project root directory
+	// Use absolute path for compilation to avoid issues with os.Chdir
+	cmd := exec.Command("go", "build", "-o", "sectore", filepath.Join(originalCwd, "cmd", "sectore"))
+	cmd.Dir = originalCwd // Ensure compile command executes in project root directory
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to compile sectore: %v\n%s", err, output)
