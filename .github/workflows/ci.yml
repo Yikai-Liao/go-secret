@@ -24,6 +24,12 @@ jobs:
     - name: Build
       run: go build -v ./...
       
+    - name: Debugging - Current Directory and Files
+      run: |
+        pwd
+        ls -R
+        go env
+        
     - name: Test with the Go CLI
       run: go test ./...
       
@@ -49,6 +55,9 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: stable
+
+    - name: Debugging - Check .golangci.yml
+      run: ls -la .golangci.yml
 
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v8
