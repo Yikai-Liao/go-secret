@@ -8,7 +8,7 @@ linters:
     - dogsled
     - dupl
     - errcheck
-    - exportloopref
+    - copyloopvar
     - funlen
     - gochecknoinits
     - goconst
@@ -42,7 +42,8 @@ linters-settings:
     check-blank: true
   
   govet:
-    shadow: true
+    enable:
+      - shadow
   
   gocyclo:
     min-complexity: 15
