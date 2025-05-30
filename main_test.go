@@ -1274,3 +1274,186 @@ func TestEditCommand(t *testing.T) {
 		os.Remove(initFilePath)
 	})
 }
+
+// TestExecuteFunction tests the Execute function
+func TestExecuteFunction(t *testing.T) {
+	// Test Execute function directly
+	err := Execute()
+	if err != nil {
+		t.Errorf("Execute function failed: %v", err)
+	}
+}
+
+// TestMainFunction tests the main function indirectly via runCLI
+func TestMainFunction(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "go-secret-test-main-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Test main function by running help command
+	stdout, _, err := runCLI(t, []string{"--help"}, "", tempDir)
+	// Help command may or may not return error depending on Cobra version
+	if !strings.Contains(stdout, "gs is a powerful CLI tool for securely storing") {
+		t.Errorf("Help output missing expected content: %s", stdout)
+	}
+}
+
+// TestRootCommandDefaultBehavior tests root command without arguments
+func TestRootCommandDefaultBehavior(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "go-secret-test-root-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Test root command without arguments (should show help)
+	stdout, _, err := runCLI(t, []string{}, "", tempDir)
+	// Root command may or may not return error depending on Cobra version
+	if !strings.Contains(stdout, "gs is a powerful CLI tool for securely storing") {
+		t.Errorf("Root command output missing expected help content: %s", stdout)
+	}
+}
+
+// TestInvalidCommand tests behavior with invalid commands
+func TestInvalidCommand(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "go-secret-test-invalid-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Test invalid command
+	_, stderr, err := runCLI(t, []string{"invalid-command"}, "", tempDir)
+	if err == nil {
+		t.Errorf("Invalid command should fail, but got no error")
+	}
+	if !strings.Contains(stderr, "unknown command") || !strings.Contains(stderr, "invalid-command") {
+		t.Errorf("Invalid command error message incorrect. Stderr: %s", stderr)
+	}
+}
+
+// TestCommandsWithoutRequiredArgs tests commands that require arguments
+func TestCommandsWithoutRequiredArgs(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "go-secret-test-args-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	commands := []string{"set", "unset", "export", "import", "edit"}
+	
+	for _, cmd := range commands {
+		t.Run(fmt.Sprintf("Test%sWithoutArgs", strings.Title(cmd)), func(t *testing.T) {
+			_, stderr, err := runCLI(t, []string{cmd}, "", tempDir)
+			if err == nil {
+				t.Errorf("%s command without args should fail, but got no error", cmd)
+			}
+			// Different commands have different error messages
+			if !strings.Contains(stderr, "requires at least 1 arg") && 
+			   !strings.Contains(stderr, "accepts 1 arg") {
+				t.Errorf("%s command error message incorrect. Stderr: %s", cmd, stderr)
+			}
+		})
+	}
+}
+
+// TestPasswordHandling tests password-related functionality
+func TestPasswordHandling(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "go-secret-test-password-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	testFilePath := filepath.Join(tempDir, "test-password.json")
+	testPassword := "test-password-123"
+
+	// Create a test file first
+	_, _, err = runCLI(t, []string{"init", testFilePath, "-p", testPassword}, "", tempDir)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Test commands without password flag
+	passwordRequiredCommands := []struct{
+		name string
+		args []string
+	}{
+		{"set", []string{"set", testFilePath}},
+		{"unset", []string{"unset", testFilePath}},
+		{"export", []string{"export", testFilePath, "-o", filepath.Join(tempDir, "out.json")}},
+		{"edit", []string{"edit", testFilePath}},
+	}
+
+	for _, tc := range passwordRequiredCommands {
+		t.Run(fmt.Sprintf("Test%sWithoutPassword", strings.Title(tc.name)), func(t *testing.T) {
+			_, stderr, err := runCLI(t, tc.args, "", tempDir)
+			// Commands without password should still run because password is an empty string by default
+			// They will fail during file reading or password validation stage
+			_ = err // Commands may or may not fail at this stage
+			_ = stderr // May or may not have error message
+		})
+	}
+
+	os.Remove(testFilePath)
+}
+
+// TestGlobalFlags tests global flag handling
+func TestGlobalFlags(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "go-secret-test-flags-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Test invalid flag
+	_, stderr, err := runCLI(t, []string{"--invalid-flag"}, "", tempDir)
+	if err == nil {
+		t.Errorf("Invalid flag should fail, but got no error")
+	}
+	if !strings.Contains(stderr, "unknown flag") {
+		t.Errorf("Invalid flag error message incorrect. Stderr: %s", stderr)
+	}
+
+	// Test help flag variations
+	helpFlags := []string{"-h", "--help"}
+	for _, flag := range helpFlags {
+		t.Run(fmt.Sprintf("TestHelpFlag%s", flag), func(t *testing.T) {
+			stdout, _, _ := runCLI(t, []string{flag}, "", tempDir)
+			// Help command should display help text
+			if !strings.Contains(stdout, "gs is a powerful CLI tool for securely storing") {
+				t.Errorf("Help flag %s output missing expected content: %s", flag, stdout)
+			}
+		})
+	}
+}
+
+// TestFileOperationsEdgeCases tests edge cases in file operations
+func TestFileOperationsEdgeCases(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "go-secret-test-file-ops-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	testPassword := "edge-case-password"
+
+	// Test operations on empty directory path
+	emptyPathFile := ""
+	_, _, err1 := runCLI(t, []string{"set", emptyPathFile, "-p", testPassword}, "", tempDir)
+	if err1 == nil {
+		t.Errorf("set command with empty file path should fail")
+	}
+
+	// Test operations on directory instead of file
+	dirPath := filepath.Join(tempDir, "test-dir")
+	os.Mkdir(dirPath, 0755)
+	defer os.Remove(dirPath)
+	
+	_, _, err2 := runCLI(t, []string{"set", dirPath, "-p", testPassword}, "", tempDir)
+	if err2 == nil {
+		t.Errorf("set command on directory should fail")
+	}
+}

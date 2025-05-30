@@ -327,3 +327,179 @@ func TestTransformEncryptedToJSONErrors(t *testing.T) {
 		t.Errorf("Expected decryption error, got: %v", err)
 	}
 }
+
+// TestSecretFileMarshalJSONNoHash tests marshaling without hash field
+func TestSecretFileMarshalJSONNoHash(t *testing.T) {
+	// Test marshaling SecretFile without hash field
+	sf := SecretFile{
+		Secrets: map[string]string{
+			"key1": "value1",
+			"key2": "value2",
+		},
+		Hash: "", // Empty hash should not be included in JSON
+	}
+
+	data, err := json.Marshal(sf)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify that __hash__ field is not in the JSON
+	if strings.Contains(string(data), HashField) {
+		t.Errorf("MarshalJSON included empty hash field, should be omitted")
+	}
+}
+
+// TestReadSecretFileVariousErrors tests various error scenarios
+func TestReadSecretFileVariousErrors(t *testing.T) {
+	// Test reading file with read permission error
+	tmpfile, err := ioutil.TempFile("", "secret_test_readonly_*.json")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	tmpfile.Close()
+	defer os.Remove(tmpfile.Name())
+
+	// Write valid content first
+	validContent := `{"key1": "value1", "__hash__": "hash123"}`
+	err = ioutil.WriteFile(tmpfile.Name(), []byte(validContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write valid content: %v", err)
+	}
+
+	// Change permissions to make file unreadable
+	err = os.Chmod(tmpfile.Name(), 0000)
+	if err != nil {
+		t.Fatalf("Failed to change file permissions: %v", err)
+	}
+	defer os.Chmod(tmpfile.Name(), 0644) // Restore permissions for cleanup
+
+	_, err = ReadSecretFile(tmpfile.Name())
+	if err == nil {
+		t.Errorf("ReadSecretFile succeeded on unreadable file, expected failure")
+	}
+	if !strings.Contains(err.Error(), "读取文件失败") {
+		t.Errorf("Unreadable file error message incorrect: %v", err)
+	}
+}
+
+// TestWriteSecretFileDirectoryNotExists tests writing to non-existent directory
+func TestWriteSecretFileDirectoryNotExists(t *testing.T) {
+	sf := &SecretFile{
+		Secrets: map[string]string{"key": "value"},
+		Hash:    "hash123",
+	}
+
+	nonExistentPath := filepath.Join(os.TempDir(), "non_existent_dir", "test.json")
+	err := WriteSecretFile(nonExistentPath, sf)
+	if err == nil {
+		t.Errorf("WriteSecretFile succeeded for non-existent directory, expected failure")
+		os.Remove(nonExistentPath) // Cleanup if it somehow succeeded
+	}
+	if !strings.Contains(err.Error(), "写入文件失败") {
+		t.Errorf("Non-existent directory error message incorrect: %v", err)
+	}
+}
+
+// TestTransformJSONToEncryptedEdgeCases tests edge cases for transformation
+func TestTransformJSONToEncryptedEdgeCases(t *testing.T) {
+	encryptFunc := func(s string) (string, error) {
+		return "encrypted_" + s, nil
+	}
+
+	// Test empty JSON object
+	emptyJSON := []byte(`{}`)
+	encrypted, hash, err := TransformJSONToEncrypted(emptyJSON, encryptFunc)
+	if err != nil {
+		t.Fatalf("TransformJSONToEncrypted failed for empty JSON: %v", err)
+	}
+	if len(encrypted) != 0 {
+		t.Errorf("Expected empty encrypted map, got %d items", len(encrypted))
+	}
+	if hash == "" {
+		t.Errorf("Hash should not be empty even for empty JSON")
+	}
+
+	// Test JSON with special characters
+	specialJSON := []byte(`{"key with spaces": "value with\nnewlines", "unicode": "测试🔐"}`)
+	encrypted, hash, err = TransformJSONToEncrypted(specialJSON, encryptFunc)
+	if err != nil {
+		t.Fatalf("TransformJSONToEncrypted failed for special characters: %v", err)
+	}
+	if len(encrypted) != 2 {
+		t.Errorf("Expected 2 encrypted keys, got %d", len(encrypted))
+	}
+
+	// Test JSON with nested objects (should fail)
+	nestedJSON := []byte(`{"key": "value", "nested": {"subkey": "subvalue"}}`)
+	_, _, err = TransformJSONToEncrypted(nestedJSON, encryptFunc)
+	if err == nil {
+		t.Errorf("Expected error for nested JSON")
+	}
+	if !strings.Contains(err.Error(), "cannot unmarshal object") {
+		t.Errorf("Nested object error message incorrect: %v", err)
+	}
+
+	// Test JSON with arrays (should fail)
+	arrayJSON := []byte(`{"key": "value", "array": ["item1", "item2"]}`)
+	_, _, err = TransformJSONToEncrypted(arrayJSON, encryptFunc)
+	if err == nil {
+		t.Errorf("Expected error for array JSON")
+	}
+	if !strings.Contains(err.Error(), "cannot unmarshal array") {
+		t.Errorf("Array error message incorrect: %v", err)
+	}
+
+	// Test JSON with non-string values (should fail)
+	nonStringJSON := []byte(`{"key": "value", "number": 123}`)
+	_, _, err = TransformJSONToEncrypted(nonStringJSON, encryptFunc)
+	if err == nil {
+		t.Errorf("Expected error for non-string JSON")
+	}
+	if !strings.Contains(err.Error(), "cannot unmarshal number") {
+		t.Errorf("Non-string error message incorrect: %v", err)
+	}
+}
+
+// TestTransformEncryptedToJSONEdgeCases tests edge cases for decryption transformation
+func TestTransformEncryptedToJSONEdgeCases(t *testing.T) {
+	decryptFunc := func(s string) (string, error) {
+		return strings.TrimPrefix(s, "encrypted_"), nil
+	}
+
+	// Test empty encrypted map
+	emptyEncrypted := map[string]string{}
+	decrypted, err := TransformEncryptedToJSON(emptyEncrypted, decryptFunc)
+	if err != nil {
+		t.Fatalf("TransformEncryptedToJSON failed for empty map: %v", err)
+	}
+	if len(decrypted) != 0 {
+		t.Errorf("Expected empty decrypted map, got %d items", len(decrypted))
+	}
+
+	// Test encrypted map with many items
+	manyEncrypted := make(map[string]string)
+	for i := 0; i < 100; i++ {
+		key := fmt.Sprintf("key%d", i)
+		value := fmt.Sprintf("encrypted_value%d", i)
+		manyEncrypted[key] = value
+	}
+	
+	decrypted, err = TransformEncryptedToJSON(manyEncrypted, decryptFunc)
+	if err != nil {
+		t.Fatalf("TransformEncryptedToJSON failed for many items: %v", err)
+	}
+	if len(decrypted) != 100 {
+		t.Errorf("Expected 100 decrypted items, got %d", len(decrypted))
+	}
+	
+	// Verify all items were decrypted correctly
+	for i := 0; i < 100; i++ {
+		key := fmt.Sprintf("key%d", i)
+		expectedValue := fmt.Sprintf("value%d", i)
+		if decrypted[key] != expectedValue {
+			t.Errorf("Decrypted value mismatch for key %s: expected %s, got %s", key, expectedValue, decrypted[key])
+			break
+		}
+	}
+}
