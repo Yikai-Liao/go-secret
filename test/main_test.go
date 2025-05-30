@@ -29,7 +29,7 @@ func runCLI(t *testing.T, args []string, stdinInput string, tempDir string) (str
 	defer os.Chdir(originalCwd) // Ensure switching back to original directory after test
 
 	// Compile sectore
-	cmd := exec.Command("go", "build", "-o", "sectore", filepath.Join(originalCwd, "cmd", "sectore"))
+	cmd := exec.Command("go", "build", "-o", "sectore", "./cmd/sectore")
 	cmd.Dir = originalCwd // Compile command executes in project root directory
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -1277,10 +1277,22 @@ func TestEditCommand(t *testing.T) {
 
 // TestExecuteFunction tests the Execute function
 func TestExecuteFunction(t *testing.T) {
-	// Test Execute function directly
-	err := Execute()
+	// Create a temporary directory for testing
+	tempDir, err := ioutil.TempDir("", "sectore_test_execute")
 	if err != nil {
-		t.Errorf("Execute function failed: %v", err)
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Test Execute function by running the CLI with --help
+	stdout, stderr, err := runCLI(t, []string{"--help"}, "", tempDir)
+	if err != nil {
+		t.Errorf("Execute function failed: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
+	}
+	
+	// Verify that help output contains expected content
+	if !strings.Contains(stdout, "sectore is a secure CLI tool") {
+		t.Errorf("Expected help output to contain application description, got: %s", stdout)
 	}
 }
 

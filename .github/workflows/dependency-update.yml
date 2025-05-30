@@ -2,8 +2,8 @@ name: Dependency Update
 
 on:
   schedule:
-    # Run weekly on Sundays at 02:00 UTC
-    - cron: '0 2 * * 0'
+    # Run daily at 02:00 UTC
+    - cron: '0 2 * * *'
   workflow_dispatch: # Allow manual triggering
 
 jobs:
@@ -11,12 +11,31 @@ jobs:
     name: Update Go Dependencies
     runs-on: ubuntu-latest
     steps:
+    - name: Add diagnostic logs for update-dependencies job
+      run: |
+        echo "Runner OS: $(uname -s)"
+        echo "Runner Architecture: $(uname -m)"
+        echo "Is this act? $(if [ -n "$ACT" ]; then echo 'Yes'; else echo 'No'; fi)"
+        
     - name: Checkout code
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Set up Go
+    - name: Set up Go (act-compatible)
+      if: ${{ env.ACT }}
+      run: |
+        GO_VERSION='1.23'
+        ARCH=$(uname -m)
+        [ "$ARCH" = "x86_64" ] && ARCH="amd64"
+        [ "$ARCH" = "aarch64" ] && ARCH="arm64"
+        wget "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz"
+        sudo rm -rf /usr/local/go
+        sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-${ARCH}.tar.gz"
+        echo "/usr/local/go/bin" >> $GITHUB_PATH
+
+    - name: Set up Go (using setup-go)
+      if: ${{ !env.ACT }}
       uses: actions/setup-go@v5
       with:
         go-version: '1.23'

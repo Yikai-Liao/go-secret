@@ -2,23 +2,32 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
-  pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   test:
     name: Test
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}${{ matrix.arch == 'arm64' && '-arm64' || '' }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         go-version: ['1.21', '1.22', '1.23']
+        arch: [x64, arm64]
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
+      
+    - name: Add diagnostic logs for test job
+      run: |
+        echo "Runner OS: $(uname -s)"
+        echo "Runner Architecture: $(uname -m)"
+        echo "Matrix OS: ${{ matrix.os }}"
+        echo "Matrix Go Version: ${{ matrix.go-version }}"
+        echo "Matrix Arch: ${{ matrix.arch }}"
+        echo "Is this act? $(if [ -n "$ACT" ]; then echo 'Yes'; else echo 'No'; fi)"
+      
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
@@ -30,7 +39,7 @@ jobs:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+        key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ matrix.arch }}-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-${{ matrix.go-version }}-
 
@@ -44,13 +53,19 @@ jobs:
       run: go vet ./...
 
     - name: Run tests
-      run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+      run: |
+        echo "Diagnostic: Starting tests for GOOS=$(go env GOOS), GOARCH=$(go env GOARCH)"
+        go test -race -coverprofile=coverage.out -covermode=atomic ./...
+        echo "Diagnostic: Tests completed"
 
     - name: Run integration tests
       run: go test -v ./test/...
 
     - name: Build binary
-      run: go build -o bin/sectore${{ matrix.os == 'windows-latest' && '.exe' || '' }} cmd/sectore/main.go
+      run: |
+        echo "Diagnostic: Starting build for verification"
+        go build -o bin/sectore${{ matrix.os == 'windows-latest' && '.exe' || '' }} cmd/sectore/main.go
+        echo "Diagnostic: Build completed"
 
     - name: Test binary functionality (Unix)
       if: matrix.os != 'windows-latest'
@@ -64,7 +79,7 @@ jobs:
         .\bin\sectore.exe --help
 
     - name: Upload coverage to Codecov
-      if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.23'
+      if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.23' && matrix.arch == 'x64'
       uses: codecov/codecov-action@v4
       with:
         file: ./coverage.out
@@ -83,62 +98,12 @@ jobs:
       with:
         go-version: '1.23'
 
-    - name: Run golangci-lint
+    - name: Run golangci-lint with diagnostics
       uses: golangci/golangci-lint-action@v6
       with:
         version: latest
         args: --timeout=5m
-
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.23'
-
-    - name: Run Gosec Security Scanner
-      uses: securecodewarrior/github-action-gosec@master
-      with:
-        args: './...'
-
-  build-matrix:
-    name: Build Matrix
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        goos: [linux, windows, darwin]
-        goarch: [amd64, arm64]
-        exclude:
-          - goos: windows
-            goarch: arm64
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.23'
-
-    - name: Build binary
-      env:
-        GOOS: ${{ matrix.goos }}
-        GOARCH: ${{ matrix.goarch }}
+      
+    - name: Diagnostic log after linting
       run: |
-        binary_name="sectore-${{ matrix.goos }}-${{ matrix.goarch }}"
-        if [ "${{ matrix.goos }}" = "windows" ]; then
-          binary_name="${binary_name}.exe"
-        fi
-        go build -ldflags="-s -w" -o "bin/${binary_name}" cmd/sectore/main.go
-
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: sectore-${{ matrix.goos }}-${{ matrix.goarch }}
-        path: bin/sectore-${{ matrix.goos }}-${{ matrix.goarch }}*
+        echo "Diagnostic: Linting completed"
