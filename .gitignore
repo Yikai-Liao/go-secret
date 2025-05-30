@@ -19,8 +19,17 @@
 go.work
 
 # Build outputs
+/bin/sectore
+/bin/go-secret
+/bin/gs
+sectore
 go-secret
 gs
+
+# Coverage reports
+*.html
+coverage.out
+*_coverage.out
 
 # IDE files
 .vscode/

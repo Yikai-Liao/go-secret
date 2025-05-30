@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`go-secret` is a CLI tool for securely managing encrypted key-value pairs. It provides AES-256-GCM encryption with PBKDF2 key derivation and integrity verification through SHA-256 hashing.
+`sectore` is a powerful CLI tool for securely managing encrypted key-value pairs. It provides enterprise-grade AES-256-GCM encryption with PBKDF2 key derivation and integrity verification through SHA-256 hashing.
 
 ### Architecture
 
-- **main.go**: CLI interface using Cobra framework with commands: `set`, `unset`, `export`, `init`, `import`, `edit`
-- **internal/crypto/**: AES-256-GCM encryption/decryption with secure password handling
-- **internal/file/**: Secret file I/O with hash verification and JSON marshaling
+- **cmd/sectore/main.go**: CLI interface using Cobra framework with commands: `set`, `unset`, `export`, `init`, `import`, `edit`
+- **pkg/crypto/**: AES-256-GCM encryption/decryption with secure password handling
+- **pkg/file/**: Secret file I/O with hash verification and JSON marshaling
 
 ### Key Components
 
@@ -22,17 +22,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Building and Testing
 ```bash
-go build -o go-secret main.go     # Build executable
-go test ./...                     # Run all tests
-go test -v ./internal/crypto      # Test crypto module
-go test -v ./internal/file        # Test file module
+go build -o bin/sectore cmd/sectore/main.go  # Build executable
+go test ./...                               # Run all tests
+go test -v ./pkg/crypto                     # Test crypto module
+go test -v ./pkg/file                       # Test file module
 ```
 
 ### Running
 ```bash
-./go-secret --help                # Show help
-./go-secret init                  # Initialize with random password
-./go-secret set secrets.json -p password  # Set environment variables
+./bin/sectore --help                  # Show help
+./bin/sectore init                    # Initialize with random password
+./bin/sectore set sectore.json -p password  # Set environment variables
 ```
 
 ## File Format
